@@ -113,12 +113,10 @@ class UniPointPosition implements Point {
     @Override
     public boolean isValidPoint(List<List<Double>> landmarks) {
         List<Double> point = landmarks.get(toTrack);
-        actual = Arrays.asList((double) point.get(0), (double) point.get(1));
+        actual = Arrays.asList(point.get(0), point.get(1));
         double distance = Util.getDistance(actual.get(0), actual.get(1), target.get(0), target.get(1));
-//        System.out.println("Target position: " + target);
-//        System.out.println("Actual distance: " + actual.get(0) + ", " + actual.get(1));
 
-        return distance < leniency;
+        return distance <= leniency;
     }
 
     @Override
