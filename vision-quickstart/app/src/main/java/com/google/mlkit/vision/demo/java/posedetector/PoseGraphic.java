@@ -16,7 +16,6 @@ import com.google.mlkit.vision.pose.PoseLandmark;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import com.android.volley.Request;
@@ -48,8 +47,8 @@ public class PoseGraphic extends Graphic {
     private final Paint textPaint;
 
     //start custom variables
-    static JSONObject gestureJson;
-    static PoseTracker poseTracker = null;
+    static JSONObject timelineJson;
+    static Timeline timeline = null;
     //end custom variable
 
     PoseGraphic(GraphicOverlay overlay, Pose pose, boolean showInFrameLikelihood, boolean visualizeZ, boolean rescaleZForVisualization) {
@@ -83,7 +82,7 @@ public class PoseGraphic extends Graphic {
         rightPaint.setColor(Color.YELLOW);
 
         //start custom code
-        if (poseTracker == null) {
+        if (timeline == null) {
             SetupKeyFrames(overlay);
         }
         //end custom code
@@ -101,9 +100,9 @@ public class PoseGraphic extends Graphic {
         int y = 250;
         int x = 25;
 
-        if (gestureJson != null) {
+        if (timelineJson != null) {
             try {
-                String fileType = (String) gestureJson.get("fileType");
+                String fileType = (String) timelineJson.get("fileType");
                 canvas.drawText("File type: " + fileType, x, y, textPaint);
             } catch (JSONException e) {
                 canvas.drawText("Error getting file type", x, y, textPaint);
@@ -112,19 +111,16 @@ public class PoseGraphic extends Graphic {
 
 
         //doesn't draw if no landmarks
-        if (!landmarks.isEmpty() && poseTracker != null) {
+        if (!landmarks.isEmpty() && timeline != null) {
 
             //draws the pose
             DrawAllPoints(canvas, landmarks);
             DrawAllLines(canvas);
-            poseTracker.validatePose(landmarks);
 
+            timeline.validatePose(landmarks);
 
-            y += textHeight;
-            canvas.drawText("Gestures detected: " + poseTracker.gestureCount, x, y, textPaint);
-
-            List<String> poseFeedback = poseTracker.getPoseInfo();
-            for (int i = 0; i < poseFeedback.size(); i++){
+            List<String> poseFeedback = timeline.getPoseInfo();
+            for (int i = 0; i < poseFeedback.size(); i++) {
                 y += textHeight;
                 canvas.drawText(poseFeedback.get(i), x, y, textPaint);
             }
@@ -237,22 +233,25 @@ public class PoseGraphic extends Graphic {
         Util.screenWidth = overlay.getImageWidth();
         Util.screenHeight = overlay.getImageHeight();
 
-        PullGestureJson();
+        PullTimelineJson("https://api.npoint.io/f9d2459d13562c7a5542");
     }
 
-    void PullGestureJson() {
-        String url = "https://api.npoint.io/534c33f088b5a5d13231";
+    void PullTimelineJson(String url) {
+
         RequestQueue rq = Volley.newRequestQueue(getApplicationContext());
         StringRequest sr = new StringRequest(Request.Method.GET, url, new Response.Listener<String>() {
+
             @Override
             public void onResponse(String response) {
+
                 try {
-                    gestureJson = new JSONObject(response);
-                    System.out.println("JSON read");
-                    if (poseTracker == null) {
-                        System.out.println("Initialized the tracker object");
-                        poseTracker = new PoseTracker(gestureJson);
+
+                    timelineJson = new JSONObject(response);
+                    if (timeline == null) {
+
+                        timeline = new Timeline(timelineJson, rq);
                     }
+
                 } catch (JSONException e) {
                     System.out.println(e);
                 }

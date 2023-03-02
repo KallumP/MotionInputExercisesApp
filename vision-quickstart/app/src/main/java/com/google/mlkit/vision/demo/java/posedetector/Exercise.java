@@ -11,25 +11,27 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-public class PoseTracker {
+public class Exercise {
 
-    private List<Keyframe> kfs;
+    String name;
+    private List<Keyframe> keyframes;
     int currentKeyframe;
     int gestureCount;
 
-    public PoseTracker(List<Keyframe> _kfs) {
-        kfs = _kfs;
+    public Exercise(List<Keyframe> _kfs) {
+        keyframes = _kfs;
         currentKeyframe = 0;
         gestureCount = 0;
     }
 
-    public PoseTracker(JSONObject json) {
-        this.kfs = new ArrayList<>();
+    public Exercise(JSONObject json, String _name) {
+        name = _name;
+        this.keyframes = new ArrayList<>();
         try {
             JSONArray kfs = (JSONArray) json.get("keyframes");
             for (int i = 0; i < kfs.length(); i++) {
                 JSONObject kf = (JSONObject) kfs.get(i);
-                this.kfs.add(new Keyframe(kf));
+                this.keyframes.add(new Keyframe(kf));
             }
         } catch (JSONException e) {
             System.out.println(e);
@@ -38,7 +40,7 @@ public class PoseTracker {
     }
 
     public void validatePose(List<PoseLandmark> landmarks) {
-        Keyframe kf = kfs.get(currentKeyframe);
+        Keyframe kf = keyframes.get(currentKeyframe);
 
         List<List<Double>> landmarks_double = new ArrayList<>(landmarks.size());
 
@@ -52,7 +54,7 @@ public class PoseTracker {
         if (!withinTime) {
             // reset the state
             for (int i = 0; i < currentKeyframe + 1; i++) {
-                kfs.get(i).clearTimer();
+                keyframes.get(i).clearTimer();
             }
             currentKeyframe = 0;
         } else if (!validPose) {
@@ -63,10 +65,10 @@ public class PoseTracker {
             // move to the next keyframe
             // or terminate if traversed all keyframes
             System.out.println("Pass");
-            if (currentKeyframe >= kfs.size() - 1) {
+            if (currentKeyframe >= keyframes.size() - 1) {
                 resetPoseTracker();
             } else {
-                kfs.get(currentKeyframe).clearTimer();
+                keyframes.get(currentKeyframe).clearTimer();
                 currentKeyframe++;
             }
         }
@@ -78,8 +80,8 @@ public class PoseTracker {
 
         currentKeyframe = 0;
 
-        for (int i = 0; i < kfs.size(); i++)
-            kfs.get(i).clearTimer();
+        for (int i = 0; i < keyframes.size(); i++)
+            keyframes.get(i).clearTimer();
     }
 
     public int getPoseStatus() {
@@ -87,8 +89,9 @@ public class PoseTracker {
     }
 
     public List<String> getPoseInfo() {
-        List<String> info = kfs.get(currentKeyframe).getInfo();
+        List<String> info = keyframes.get(currentKeyframe).getInfo();
         info.add("Current Keyframe: " + currentKeyframe);
+        info.add("Gestures detected: " + gestureCount);
         return info;
     }
 }
