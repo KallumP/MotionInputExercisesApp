@@ -93,14 +93,11 @@ public class Keyframe implements Point {
         }
 
         //loops through each point in this frame
-        for (int i = 0; i < points.size(); i++) {
-
-            //gets the list of output strings
-            List<String> thisFramesInfo = points.get(i).getInfo();
+        for (int i = 0; i < points.size(); i++)
 
             //combines the two lists
-            poseFeedback.addAll(thisFramesInfo);
-        }
+            poseFeedback.addAll(points.get(i).getInfo());
+
         return poseFeedback;
     }
 

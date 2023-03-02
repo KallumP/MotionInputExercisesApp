@@ -47,13 +47,14 @@ public class PoseGraphic extends Graphic {
     private final Paint textPaint;
 
     //start custom variables
+    GraphicOverlay overlay;
     static JSONObject timelineJson;
     static Timeline timeline = null;
     //end custom variable
 
-    PoseGraphic(GraphicOverlay overlay, Pose pose, boolean showInFrameLikelihood, boolean visualizeZ, boolean rescaleZForVisualization) {
+    PoseGraphic(GraphicOverlay _overlay, Pose pose, boolean showInFrameLikelihood, boolean visualizeZ, boolean rescaleZForVisualization) {
 
-        super(overlay);
+        super(_overlay);
 
         textPaint = new Paint();
         textPaint.setColor(TEXT_COLOR);
@@ -83,7 +84,8 @@ public class PoseGraphic extends Graphic {
 
         //start custom code
         if (timeline == null) {
-            SetupKeyFrames(overlay);
+            overlay = _overlay;
+            SetupKeyFrames(_overlay);
         }
         //end custom code
     }
@@ -100,16 +102,6 @@ public class PoseGraphic extends Graphic {
         int y = 250;
         int x = 25;
 
-        if (timelineJson != null) {
-            try {
-                String fileType = (String) timelineJson.get("fileType");
-                canvas.drawText("File type: " + fileType, x, y, textPaint);
-            } catch (JSONException e) {
-                canvas.drawText("Error getting file type", x, y, textPaint);
-            }
-        }
-
-
         //doesn't draw if no landmarks
         if (!landmarks.isEmpty() && timeline != null) {
 
@@ -119,7 +111,7 @@ public class PoseGraphic extends Graphic {
 
             timeline.validatePose(landmarks);
 
-            List<String> poseFeedback = timeline.getPoseInfo();
+            List<String> poseFeedback = timeline.getLandMarkInfo();
             for (int i = 0; i < poseFeedback.size(); i++) {
                 y += textHeight;
                 canvas.drawText(poseFeedback.get(i), x, y, textPaint);
@@ -249,7 +241,7 @@ public class PoseGraphic extends Graphic {
                     timelineJson = new JSONObject(response);
                     if (timeline == null) {
 
-                        timeline = new Timeline(timelineJson, rq);
+                        timeline = new Timeline(overlay, timelineJson, rq);
                     }
 
                 } catch (JSONException e) {
