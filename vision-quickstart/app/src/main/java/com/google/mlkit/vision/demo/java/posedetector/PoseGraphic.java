@@ -113,8 +113,8 @@ public class PoseGraphic extends Graphic {
 
             List<String> poseFeedback = timeline.getLandMarkInfo();
             for (int i = 0; i < poseFeedback.size(); i++) {
-                y += textHeight;
                 canvas.drawText(poseFeedback.get(i), x, y, textPaint);
+                y += textHeight;
             }
         }
         //end tracking code

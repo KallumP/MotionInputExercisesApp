@@ -25,6 +25,7 @@ public class Timeline extends Graphic {
     static JSONObject gestureJson;
     List<Exercise> exercises = null;
     int currentIndex = 0;
+    int timelineRepeat = 0;
 
     List<String> debugList = new ArrayList<>();
 
@@ -81,14 +82,22 @@ public class Timeline extends Graphic {
             currentIndex++;
 
             //if timeline has finished
-            if (currentIndex >= exercises.size())
+            if (currentIndex >= exercises.size()){
 
+                //resets the timeline
                 currentIndex = 0;
+
+                //increments the repeat counter
+                timelineRepeat++;
+            }
         }
     }
 
     public List<String> getLandMarkInfo() {
         List<String> info = new ArrayList<>();
+
+        //states how many times the timeline has been completed
+        info.add("Timeline finished " + timelineRepeat + " times");
 
         //states the current exercise name
         info.add("Current exercise: " + exercises.get(currentIndex).name);
