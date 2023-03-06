@@ -17,6 +17,7 @@
 package com.google.mlkit.vision.demo.java.posedetector;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.util.Log;
 import androidx.annotation.NonNull;
 import com.google.android.gms.tasks.Task;
@@ -71,9 +72,14 @@ public class PoseDetectorProcessor
     this.showInFrameLikelihood = showInFrameLikelihood;
     this.visualizeZ = visualizeZ;
     this.rescaleZForVisualization = rescaleZForVisualization;
-    detector = PoseDetection.getClient(options);
+    this.detector = PoseDetection.getClient(options);
     this.isStreamMode = isStreamMode;
+    // we could pass the context object here into the Timeline class
     this.context = context;
+
+    // TODO: Initialize the Timeline object here
+    SharedPreferences sp = context.getApplicationContext().getSharedPreferences("timelineData", Context.MODE_PRIVATE);
+    sp.edit().putString("timelineUrl", "https://api.npoint.io/f9d2459d13562c7a5542").apply();
   }
 
   @Override
@@ -108,6 +114,7 @@ public class PoseDetectorProcessor
   protected void onSuccess(
           @NonNull PoseResult poseResult,
           @NonNull GraphicOverlay graphicOverlay) {
+    // TODO: validatePose here
     graphicOverlay.add(
             new PoseGraphic(
                     graphicOverlay,

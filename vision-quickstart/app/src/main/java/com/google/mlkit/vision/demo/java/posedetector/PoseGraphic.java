@@ -103,7 +103,7 @@ public class PoseGraphic extends Graphic {
         int x = 25;
 
         //doesn't draw if no landmarks
-        if (!landmarks.isEmpty() && timeline != null) {
+        if (!landmarks.isEmpty() && timeline != null && timeline.exerciseUnavailable == 0) {
 
             //draws the pose
             DrawAllPoints(canvas, landmarks);
@@ -238,10 +238,10 @@ public class PoseGraphic extends Graphic {
 
                 try {
 
-                    timelineJson = new JSONObject(response);
+                    JSONObject timelineJson = new JSONObject(response);
                     if (timeline == null) {
 
-                        timeline = new Timeline(overlay, timelineJson, rq);
+                        timeline = new Timeline(overlay, timelineJson);
                     }
 
                 } catch (JSONException e) {
