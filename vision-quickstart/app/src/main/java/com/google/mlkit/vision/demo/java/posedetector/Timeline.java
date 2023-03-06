@@ -1,15 +1,7 @@
 package com.google.mlkit.vision.demo.java.posedetector;
 
 import android.content.Context;
-import android.content.SharedPreferences;
-import android.graphics.Canvas;
-
-import com.google.mlkit.vision.demo.GraphicOverlay;
-import com.google.mlkit.vision.demo.GraphicOverlay.Graphic;
-import com.android.volley.Request;
 import com.android.volley.RequestQueue;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.google.mlkit.vision.pose.PoseLandmark;
 import com.android.volley.toolbox.Volley;
@@ -22,9 +14,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-// A timeline encapsulates a series of related exercises
-// Seems like extending the Graphic interface is a bit unnecessary
-public class Timeline extends Graphic {
+// An object that encapsulates a series of exercises
+public class Timeline {
 
     static JSONObject gestureJson;
     public List<Exercise> exercises = null;
@@ -33,91 +24,33 @@ public class Timeline extends Graphic {
 
     public int exerciseUnavailable = 1;
 
-    // Why do we need this overlay object
-    public Timeline(GraphicOverlay overlay, JSONObject json) {
-        super(overlay);
+    public Timeline(Context context, JSONObject timelineJson) {
+        // Read each exercise stored in the json
+        try {
+            JSONArray allExerciseJson = (JSONArray) timelineJson.get("timeline");
+            exerciseUnavailable = allExerciseJson.length();
+            exercises = new ArrayList<>(Collections.nCopies(exerciseUnavailable, null));
+            RequestQueue rq = Volley.newRequestQueue(context.getApplicationContext());
 
-        // TODO: Read the timeline url from sharedPreferences
-        SharedPreferences sp = getApplicationContext().getSharedPreferences("timelineData", Context.MODE_PRIVATE);
-        String url = sp.getString("timelineUrl", "null"); // default url is one of the sample timelines
-
-        RequestQueue rq = Volley.newRequestQueue(getApplicationContext());
-        StringRequest sr = new StringRequest(Request.Method.GET, url, new Response.Listener<String>() {
-            @Override
-            public void onResponse(String response) {
-                try {
-                    JSONObject timelineJSON = new JSONObject(response);
-                    // Read the individual exercise stored in the json
-                    JSONArray allExerciseJson = (JSONArray) timelineJSON.get("timeline");
-                    exerciseUnavailable = allExerciseJson.length();
-                    exercises = new ArrayList<>(Collections.nCopies(exerciseUnavailable, null));
-                    RequestQueue rq = Volley.newRequestQueue(getApplicationContext());
-
-                    for (int i = 0; i < allExerciseJson.length(); i++) {
-                        // Download every exercise's json file
-                        JSONObject exerciseJson = (JSONObject) allExerciseJson.get(i);
-                        String name = (String) exerciseJson.get("exercise");
-                        String url = (String) exerciseJson.get("url");
-                        final int index = i;
-                        StringRequest sr = new StringRequest(Request.Method.GET, url, new Response.Listener<String>() {
-                            @Override
-                            public void onResponse(String response) {
-                                try {
-                                    JSONObject exerciseJson = new JSONObject(response);
-                                    exercises.set(index, new Exercise(exerciseJson, name));
-                                    exerciseUnavailable -= 1;
-                                } catch (JSONException e) {System.out.println(e);}
-                            }
-                        }, new Response.ErrorListener() {
-                            @Override
-                            public void onErrorResponse(VolleyError e) {System.out.println(e);}
-                        });
-                        rq.add(sr);
+            for (int i = 0; i < allExerciseJson.length(); i++) {
+                // Download every exercise's json file
+                JSONObject exerciseJson = (JSONObject) allExerciseJson.get(i);
+                String name = (String) exerciseJson.get("exercise");
+                String url = (String) exerciseJson.get("url");
+                final int index = i;
+                StringRequest sr = Util.fetchJson(url, context, new Util.jsonHandler() {
+                    @Override
+                    void parse(JSONObject response) {
+                        exercises.set(index, new Exercise(response, name));
+                        exerciseUnavailable -= 1;
                     }
-                } catch (JSONException e) {System.out.println(e);}
+                });
+                rq.add(sr);
             }
-            }, new Response.ErrorListener() {
-                @Override
-                public void onErrorResponse(VolleyError e) {System.out.println(e);}
-            }
-        );
-
-        rq.add(sr);
-//
-//        //instantiates the list of exercises
-//        exercises = new ArrayList<>();
-//
-//        try {
-//            //gets the list of exercises in a json array format
-//            JSONArray exercisesJson = (JSONArray) json.get("timeline");
-//
-//            //loops through the list of exercises
-//            for (int i = 0; i < exercisesJson.length(); i++) {
-//
-//                //gets the json for this particular exercise
-//                JSONObject exerciseJson = (JSONObject) exercisesJson.get(i);
-//
-//                //gets the name of this exercise
-//                String exerciseName = (String) exerciseJson.get("exercise");
-//
-//                //gets the url for this exercise's api call
-//                String exerciseURL = (String) exerciseJson.get("url");
-//
-//                //pulls the relevant data and adds this exercise to the list
-//                PullExerciseJson(exerciseURL, exerciseName);
-//            }
-//
-//        } catch (JSONException e) {
-//            System.out.println(e);
-//            return;
-//        }
-//
-        currentIndex = 0;
-    }
-
-    @Override
-    public void draw(Canvas canvas) {
-        //no need to draw anything
+            currentIndex = 0;
+        } catch (JSONException e) {
+            System.out.println(e);
+        }
     }
 
     public void validatePose(List<PoseLandmark> landmarks) {
@@ -130,6 +63,7 @@ public class Timeline extends Graphic {
 
             //if timeline has finished
             if (currentIndex >= exercises.size()){
+                // resets all exercises
                 for (int i = 0; i < currentIndex; i++) {
                     exercises.get(i).resetPoseTracker();
                 }
@@ -157,39 +91,4 @@ public class Timeline extends Graphic {
 
         return info;
     }
-
-
-    // TODO: Rewrite this function to fetch all exercises
-    void PullExerciseJson(String url, String name) {
-        StringRequest sr = new StringRequest(Request.Method.GET, url, new Response.Listener<String>() {
-
-            @Override
-            public void onResponse(String response) {
-
-                try {
-                    // order the response here
-                    gestureJson = new JSONObject(response);
-                    exercises.add(new Exercise(gestureJson, name));
-
-                } catch (JSONException e) {
-                    System.out.println(e);
-                }
-            }
-
-        }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                System.out.println(error);
-            }
-        });
-
-    }
-//
-//    private interface jsonParser {
-//        void handleResponse(String response);
-//    }
-//
-//    private void fetchJson(String url, jsonParser parser) {
-//
-//    }
 }

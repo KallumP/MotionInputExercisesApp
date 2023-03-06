@@ -3,6 +3,8 @@ package com.google.mlkit.vision.demo.java.posedetector;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -225,37 +227,21 @@ public class PoseGraphic extends Graphic {
         Util.screenWidth = overlay.getImageWidth();
         Util.screenHeight = overlay.getImageHeight();
 
-        PullTimelineJson("https://api.npoint.io/f9d2459d13562c7a5542");
+        PullTimelineJson(overlay.getContext());
     }
 
-    void PullTimelineJson(String url) {
+    void PullTimelineJson(Context context) {
 
-        RequestQueue rq = Volley.newRequestQueue(getApplicationContext());
-        StringRequest sr = new StringRequest(Request.Method.GET, url, new Response.Listener<String>() {
+        SharedPreferences sp = context.getApplicationContext().getSharedPreferences("timelineData", Context.MODE_PRIVATE);
+        String url = sp.getString("timelineUrl", "null"); // default url is one of the sample timelines
 
+        RequestQueue rq = Volley.newRequestQueue(context.getApplicationContext());
+        StringRequest sr = Util.fetchJson(url, context, new Util.jsonHandler() {
             @Override
-            public void onResponse(String response) {
-
-                try {
-
-                    JSONObject timelineJson = new JSONObject(response);
-                    if (timeline == null) {
-
-                        timeline = new Timeline(overlay, timelineJson);
-                    }
-
-                } catch (JSONException e) {
-                    System.out.println(e);
-                }
-            }
-
-        }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                System.out.println(error);
+            void parse(JSONObject response) {
+                timeline = new Timeline(context, response);
             }
         });
-
         rq.add(sr);
     }
 }
