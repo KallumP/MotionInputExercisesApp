@@ -21,8 +21,8 @@ import java.util.List;
 import java.time.Duration;
 
 public class Util {
-    public static Integer screenHeight = 0;
-    public static Integer screenWidth = 0;
+    public static Integer screenHeight = null;
+    public static Integer screenWidth = null;
 
     public static abstract class jsonHandler {
         abstract void parse(JSONObject response);
@@ -45,7 +45,7 @@ public class Util {
     }
 
     //returns exact pixel values of the screen from a ratio vector array
-    public static List<Double> ScreenRatioVectorToPixelVector(List<Double> ratio) {
+    public static List<Double> screenRatioVectorToPixelVector(List<Double> ratio) {
 
         List<Double> toReturn = new ArrayList<>();
 
