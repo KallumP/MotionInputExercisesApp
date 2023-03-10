@@ -41,46 +41,49 @@ public class Exercise {
 
     public boolean validatePose(List<PoseLandmark> landmarks) {
 
-        //gets the current keyframe
-        Keyframe keyframe = keyframes.get(currentKeyframe);
+        if (landmarks.size() > 0) { //doesn't do anything if there are no landmarks
 
-        //gets all the landmarks of the user
-        List<List<Double>> landmarks_double = new ArrayList<>(landmarks.size());
-        for (int i = 0; i < landmarks.size(); i++) {
-            PoseLandmark lm = landmarks.get(i);
-            landmarks_double.add(Arrays.asList((double) lm.getPosition().x, (double) lm.getPosition().y));
-        }
+            //gets the current keyframe
+            Keyframe keyframe = keyframes.get(currentKeyframe);
 
-        //checks if the user's pose matched what is required of this keyframe
-        boolean validPose = keyframe.isValidPoint(landmarks_double);
-
-        //checks if the pose was matched within the required time
-        boolean withinTime = keyframe.isWithinTime();
-
-
-        if (!withinTime) { //not within time
-
-            // reset the state
-            for (int i = 0; i < currentKeyframe + 1; i++) {
-                keyframes.get(i).clearTimer();
+            //gets all the landmarks of the user
+            List<List<Double>> landmarks_double = new ArrayList<>(landmarks.size());
+            for (int i = 0; i < landmarks.size(); i++) {
+                PoseLandmark lm = landmarks.get(i);
+                landmarks_double.add(Arrays.asList((double) lm.getPosition().x, (double) lm.getPosition().y));
             }
-            currentKeyframe = 0;
 
-        } else if (!validPose) { //not a valid pose
+            //checks if the user's pose matched what is required of this keyframe
+            boolean validPose = keyframe.isValidPoint(landmarks_double);
 
-            //do nothing
+            //checks if the pose was matched within the required time
+            boolean withinTime = keyframe.isWithinTime();
 
-        } else { //within time and good pose
 
-            if (currentKeyframe >= keyframes.size() - 1) { //current keyframe was the lase
+            if (!withinTime) { //not within time
 
-                return true; //lets the timeline know that this exercise is over
+                // reset the state
+                for (int i = 0; i < currentKeyframe + 1; i++) {
+                    keyframes.get(i).clearTimer();
+                }
+                currentKeyframe = 0;
 
-            } else { //more keyframes left
+            } else if (!validPose) { //not a valid pose
 
-                keyframes.get(currentKeyframe).clearTimer(); //resets this keyframe's timer
+                //do nothing
 
-                currentKeyframe++; // move to the next keyframe
+            } else { //within time and good pose
+
+                if (currentKeyframe >= keyframes.size() - 1) { //current keyframe was the lase
+
+                    return true; //lets the timeline know that this exercise is over
+
+                } else { //more keyframes left
+
+                    keyframes.get(currentKeyframe).clearTimer(); //resets this keyframe's timer
+
+                    currentKeyframe++; // move to the next keyframe
+                }
             }
         }
 

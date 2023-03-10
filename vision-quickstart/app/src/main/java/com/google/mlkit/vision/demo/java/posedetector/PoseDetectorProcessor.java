@@ -44,126 +44,107 @@ import java.util.Arrays;
 import java.util.List;
 
 
-/** A processor to run pose detector. */
-public class PoseDetectorProcessor
-        extends VisionProcessorBase<PoseDetectorProcessor.PoseResult> {
-  private static final String TAG = "PoseDetectorProcessor";
+/**A processor to run pose detector. */
+public class PoseDetectorProcessor extends VisionProcessorBase<PoseDetectorProcessor.PoseResult> {
+    private static final String TAG = "PoseDetectorProcessor";
 
-  private final PoseDetector detector;
+    private final PoseDetector detector;
 
-  private final boolean showInFrameLikelihood;
-  private final boolean visualizeZ;
-  private final boolean rescaleZForVisualization;
-  private final boolean isStreamMode;
-  private final Context context;
-  private Timeline timeline = null;
+    private final boolean showInFrameLikelihood;
+    private final boolean visualizeZ;
+    private final boolean rescaleZForVisualization;
+    private final boolean isStreamMode;
+    private final Context context;
+    private Timeline timeline = null;
 
-  /** Internal class to hold Pose and classification results. */
-  protected static class PoseResult {
-    private final Pose pose;
+    /**
+     * Internal class to hold Pose and classification results.
+     */
+    protected static class PoseResult {
+        private final Pose pose;
 
-    public PoseResult(Pose pose) {
-      this.pose = pose;
+        public PoseResult(Pose pose) {
+            this.pose = pose;
+        }
+
+        public Pose getPose() {
+            return pose;
+        }
+
     }
 
-    public Pose getPose() {
-      return pose;
+    public PoseDetectorProcessor(Context context, PoseDetectorOptionsBase options, boolean showInFrameLikelihood, boolean visualizeZ, boolean rescaleZForVisualization, boolean isStreamMode) {
+        super(context);
+        this.showInFrameLikelihood = showInFrameLikelihood;
+        this.visualizeZ = visualizeZ;
+        this.rescaleZForVisualization = rescaleZForVisualization;
+        this.detector = PoseDetection.getClient(options);
+        this.isStreamMode = isStreamMode;
+        // we could pass the context object here into the Timeline class
+        this.context = context;
+        SharedPreferences sp = context.getApplicationContext().getSharedPreferences("timelineData", Context.MODE_PRIVATE);
+        sp.edit().putString("timelineUrl", "https://api.npoint.io/f9d2459d13562c7a5542").apply();
+
+        setupTimeline(context);
     }
 
-  }
+    void setupTimeline(Context context) {
 
-  public PoseDetectorProcessor(
-          Context context,
-          PoseDetectorOptionsBase options,
-          boolean showInFrameLikelihood,
-          boolean visualizeZ,
-          boolean rescaleZForVisualization,
-          boolean isStreamMode) {
-    super(context);
-    this.showInFrameLikelihood = showInFrameLikelihood;
-    this.visualizeZ = visualizeZ;
-    this.rescaleZForVisualization = rescaleZForVisualization;
-    this.detector = PoseDetection.getClient(options);
-    this.isStreamMode = isStreamMode;
-    // we could pass the context object here into the Timeline class
-    this.context = context;
-    SharedPreferences sp = context.getApplicationContext().getSharedPreferences("timelineData", Context.MODE_PRIVATE);
-    sp.edit().putString("timelineUrl", "https://api.npoint.io/f9d2459d13562c7a5542").apply();
+        SharedPreferences sp = context.getApplicationContext().getSharedPreferences("timelineData", Context.MODE_PRIVATE);
+        String url = sp.getString("timelineUrl", "null"); // default url is one of the sample timelines
 
-    setupTimeline(context);
-  }
-
-  void setupTimeline(Context context) {
-
-    SharedPreferences sp = context.getApplicationContext().getSharedPreferences("timelineData", Context.MODE_PRIVATE);
-    String url = sp.getString("timelineUrl", "null"); // default url is one of the sample timelines
-
-    RequestQueue rq = Volley.newRequestQueue(context.getApplicationContext());
-    StringRequest sr = Util.fetchJson(url, context, new Util.jsonHandler() {
-      @Override
-      void parse(JSONObject response) {
-        timeline = new Timeline(context, response);
-      }
-    });
-    rq.add(sr);
-  }
-
-  @Override
-  public void stop() {
-    super.stop();
-    detector.close();
-  }
-
-  @Override
-  protected Task<PoseResult> detectInImage(InputImage image) {
-    return detector
-            .process(image)
-            .continueWith(
-                    task -> {
-                      Pose pose = task.getResult();
-                      return new PoseResult(pose);
-                    });
-  }
-
-  @Override
-  protected Task<PoseResult> detectInImage(MlImage image) {
-    return detector
-            .process(image)
-            .continueWith(
-                    task -> {
-                      Pose pose = task.getResult();
-                      return new PoseResult(pose);
-                    });
-  }
-
-  @Override
-  protected void onSuccess(
-          @NonNull PoseResult poseResult,
-          @NonNull GraphicOverlay graphicOverlay) {
-    List<String> info = new ArrayList<>();
-    if (timeline != null && timeline.exerciseUnavailable == 0) {
-      timeline.validatePose(poseResult.pose.getAllPoseLandmarks());
-      info = timeline.getLandMarkInfo();
+        RequestQueue rq = Volley.newRequestQueue(context.getApplicationContext());
+        StringRequest sr = Util.fetchJson(url, context, new Util.jsonHandler() {
+            @Override
+            void parse(JSONObject response) {
+                timeline = new Timeline(context, response);
+            }
+        });
+        rq.add(sr);
     }
 
-    graphicOverlay.add(
-            new PoseGraphic(
-                    graphicOverlay,
-                    poseResult.pose,
-                    showInFrameLikelihood,
-                    visualizeZ,
-                    rescaleZForVisualization,
-                    info));
-  }
+    @Override
+    public void stop() {
+        super.stop();
+        detector.close();
+    }
 
-  @Override
-  protected void onFailure(@NonNull Exception e) {
-    Log.e(TAG, "Pose detection failed!", e);
-  }
+    @Override
+    protected Task<PoseResult> detectInImage(InputImage image) {
+        return detector.process(image).continueWith(task -> {
+            Pose pose = task.getResult();
+            return new PoseResult(pose);
+        });
+    }
 
-  @Override
-  protected boolean isMlImageEnabled(Context context) {
-    // Use MlImage in Pose Detection by default, change it to OFF to switch to InputImage.
-    return true;
-  }
+    @Override
+    protected Task<PoseResult> detectInImage(MlImage image) {
+        return detector.process(image).continueWith(task -> {
+            Pose pose = task.getResult();
+            return new PoseResult(pose);
+        });
+    }
+
+    @Override
+    protected void onSuccess(@NonNull PoseResult poseResult, @NonNull GraphicOverlay graphicOverlay) {
+
+        List<String> info = new ArrayList<>();
+        if (timeline != null && timeline.exerciseUnavailable == 0) {
+            timeline.validatePose(poseResult.pose.getAllPoseLandmarks());
+            info = timeline.getLandMarkInfo();
+        }
+
+        graphicOverlay.add(new PoseGraphic(graphicOverlay, poseResult.pose, showInFrameLikelihood, visualizeZ, rescaleZForVisualization, info));
+    }
+
+    @Override
+    protected void onFailure(@NonNull Exception e) {
+        Log.e(TAG, "Pose detection failed!", e);
+    }
+
+    @Override
+    protected boolean isMlImageEnabled(Context context) {
+        // Use MlImage in Pose Detection by default, change it to OFF to switch to InputImage.
+        return true;
+    }
 }
