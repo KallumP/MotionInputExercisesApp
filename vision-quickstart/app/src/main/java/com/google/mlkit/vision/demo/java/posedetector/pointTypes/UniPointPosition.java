@@ -37,7 +37,7 @@ public class UniPointPosition implements Point {
             for (int i = 0; i < targetJson.length(); i++)
                 toTrackRatio.add((Double) targetJson.get(i)); //converts the json array into the java array (still screen ratio target)
 
-            target = Util.ScreenRatioVectorToPixelVector(toTrackRatio); //gets the pixel values for the target to track
+            target = Util.screenRatioVectorToPixelVector(toTrackRatio); //gets the pixel values for the target to track
 
             //leniency parsing
             leniency = Double.parseDouble(json.get("leniency").toString());

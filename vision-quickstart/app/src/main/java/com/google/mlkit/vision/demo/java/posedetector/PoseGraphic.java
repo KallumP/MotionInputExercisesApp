@@ -3,6 +3,8 @@ package com.google.mlkit.vision.demo.java.posedetector;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -47,12 +49,13 @@ public class PoseGraphic extends Graphic {
     private final Paint textPaint;
 
     //start custom variables
-    GraphicOverlay overlay;
-    static JSONObject timelineJson;
-    static Timeline timeline = null;
+    GraphicOverlay overlay = null;
+//    static JSONObject timelineJson;
+//    static Timeline timeline = null;
+    List<String> poseFeedback;
     //end custom variable
 
-    PoseGraphic(GraphicOverlay _overlay, Pose pose, boolean showInFrameLikelihood, boolean visualizeZ, boolean rescaleZForVisualization) {
+    PoseGraphic(GraphicOverlay _overlay, Pose pose, boolean showInFrameLikelihood, boolean visualizeZ, boolean rescaleZForVisualization, List<String> poseFeedback) {
 
         super(_overlay);
 
@@ -65,6 +68,7 @@ public class PoseGraphic extends Graphic {
         this.showInFrameLikelihood = showInFrameLikelihood;
         this.visualizeZ = visualizeZ;
         this.rescaleZForVisualization = rescaleZForVisualization;
+        this.poseFeedback = poseFeedback;
 
         classificationTextPaint = new Paint();
         classificationTextPaint.setColor(Color.WHITE);
@@ -81,46 +85,38 @@ public class PoseGraphic extends Graphic {
         rightPaint = new Paint();
         rightPaint.setStrokeWidth(STROKE_WIDTH);
         rightPaint.setColor(Color.YELLOW);
+        overlay = _overlay;
 
-        //start custom code
-        if (timeline == null) {
-            overlay = _overlay;
-            SetupKeyFrames(_overlay);
+        if (Util.screenHeight == null && Util.screenWidth == null) {
+            Util.screenHeight = overlay.getImageHeight();
+            Util.screenWidth = overlay.getImageWidth();
         }
-        //end custom code
     }
 
 
     @Override
     public void draw(Canvas canvas) {
-
-        int textHeight = 100;
         //gets the list of all body landmarks
         List<PoseLandmark> landmarks = pose.getAllPoseLandmarks();
 
-        //outputs what keyframe is being tracked
-        int y = 250;
+        // Where the information is printed
         int x = 25;
+        int y = 250;
+        int textHeight = 100;
 
-        //doesn't draw if no landmarks
-        if (!landmarks.isEmpty() && timeline != null) {
-
+        if (!landmarks.isEmpty()) {
             //draws the pose
-            DrawAllPoints(canvas, landmarks);
-            DrawAllLines(canvas);
+            drawAllPoints(canvas, landmarks);
+            drawAllLines(canvas);
 
-            timeline.validatePose(landmarks);
-
-            List<String> poseFeedback = timeline.getLandMarkInfo();
             for (int i = 0; i < poseFeedback.size(); i++) {
                 canvas.drawText(poseFeedback.get(i), x, y, textPaint);
                 y += textHeight;
             }
         }
-        //end tracking code
     }
 
-    void DrawAllPoints(Canvas canvas, List<PoseLandmark> landmarks) {
+    void drawAllPoints(Canvas canvas, List<PoseLandmark> landmarks) {
 
         // Draw all the points
         for (PoseLandmark landmark : landmarks) {
@@ -134,14 +130,7 @@ public class PoseGraphic extends Graphic {
         }
     }
 
-    void drawPoint(Canvas canvas, PoseLandmark landmark, Paint paint) {
-        PointF3D point = landmark.getPosition3D();
-        updatePaintColorByZValue(
-                paint, canvas, visualizeZ, rescaleZForVisualization, point.getZ(), zMin, zMax);
-        canvas.drawCircle(translateX(point.getX()), translateY(point.getY()), DOT_RADIUS, paint);
-    }
-
-    void DrawAllLines(Canvas canvas) {
+    void drawAllLines(Canvas canvas) {
 
         PoseLandmark leftShoulder = pose.getPoseLandmark(PoseLandmark.LEFT_SHOULDER);
         PoseLandmark rightShoulder = pose.getPoseLandmark(PoseLandmark.RIGHT_SHOULDER);
@@ -198,6 +187,13 @@ public class PoseGraphic extends Graphic {
 
     }
 
+    void drawPoint(Canvas canvas, PoseLandmark landmark, Paint paint) {
+        PointF3D point = landmark.getPosition3D();
+        updatePaintColorByZValue(
+                paint, canvas, visualizeZ, rescaleZForVisualization, point.getZ(), zMin, zMax);
+        canvas.drawCircle(translateX(point.getX()), translateY(point.getY()), DOT_RADIUS, paint);
+    }
+
     void drawLine(Canvas canvas, PoseLandmark startLandmark, PoseLandmark endLandmark, Paint paint) {
 
         PointF3D start = startLandmark.getPosition3D();
@@ -214,49 +210,6 @@ public class PoseGraphic extends Graphic {
                 translateX(end.getX()),
                 translateY(end.getY()),
                 paint);
-    }
-
-
-    //start custom functions
-
-    void SetupKeyFrames(GraphicOverlay overlay) {
-
-        //saves the screen size
-        Util.screenWidth = overlay.getImageWidth();
-        Util.screenHeight = overlay.getImageHeight();
-
-        PullTimelineJson("https://api.npoint.io/f9d2459d13562c7a5542");
-    }
-
-    void PullTimelineJson(String url) {
-
-        RequestQueue rq = Volley.newRequestQueue(getApplicationContext());
-        StringRequest sr = new StringRequest(Request.Method.GET, url, new Response.Listener<String>() {
-
-            @Override
-            public void onResponse(String response) {
-
-                try {
-
-                    timelineJson = new JSONObject(response);
-                    if (timeline == null) {
-
-                        timeline = new Timeline(overlay, timelineJson, rq);
-                    }
-
-                } catch (JSONException e) {
-                    System.out.println(e);
-                }
-            }
-
-        }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                System.out.println(error);
-            }
-        });
-
-        rq.add(sr);
     }
 }
 
