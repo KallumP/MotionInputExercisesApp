@@ -27,11 +27,11 @@ public class Timeline {
     public List<Exercise> exercises = null;
     public int currentIndex = 0;
     public int timelineRepeat = 0;
+    String name = "";
 
-    public int exerciseUnavailable = 1;
+    public Timeline(Context context, JSONObject timelineJson, String _name) {
 
-    public Timeline(Context context, JSONObject timelineJson) {
-
+        name = _name;
         exercises = new ArrayList<>();
 
         // Read each exercise stored in the json
@@ -53,6 +53,9 @@ public class Timeline {
     }
 
     public void validatePose(List<PoseLandmark> landmarks) {
+
+        if (exercises.size() == 0)
+            return;
 
         //passes the validation down to the current exercise (and checks if the exercise finished
         if (exercises.get(currentIndex).validatePose(landmarks)) {
@@ -80,7 +83,12 @@ public class Timeline {
         List<String> info = new ArrayList<>();
 
         //states how many times the timeline has been completed
-        info.add("Timeline finished " + timelineRepeat + " times");
+        info.add("Timeline: " + name + " finished " + timelineRepeat + " times");
+
+        if (exercises.size() == 0){
+            info.add("No exercises");
+            return info;
+        }
 
         //states the current exercise name
         info.add("Current exercise: " + exercises.get(currentIndex).name);

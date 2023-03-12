@@ -130,10 +130,14 @@ public class PoseDetectorProcessor extends VisionProcessorBase<PoseDetectorProce
 
         List<String> info = new ArrayList<>();
 
+        info.add("Timelines found: " + timelines.size());
+
+        int timelineToCheck = 1;
         //if the timeline exists, and there were exercises
-        if (timelines.get(0) != null && timelines.get(0).exerciseUnavailable == 0) {
-            timelines.get(0).validatePose(poseResult.pose.getAllPoseLandmarks());
-            info = timelines.get(0).getLandMarkInfo();
+        if (timelines.get(timelineToCheck) != null) {
+            info.add("condition passed");
+            timelines.get(timelineToCheck).validatePose(poseResult.pose.getAllPoseLandmarks());
+            info = timelines.get(timelineToCheck).getLandMarkInfo();
         }
 
         graphicOverlay.add(new PoseGraphic(graphicOverlay, poseResult.pose, showInFrameLikelihood, visualizeZ, rescaleZForVisualization, info));
@@ -175,12 +179,13 @@ public class PoseDetectorProcessor extends VisionProcessorBase<PoseDetectorProce
 
                         //gets the json of current timeline
                         String value = childSnapshot.getValue().toString();
+                        String name = childSnapshot.getKey().toString();
 
                         try {
 
                             //adds this timeline to the list
                             JSONObject fetchedJson = new JSONObject(value);
-                            timelines.add(new Timeline(context, fetchedJson));
+                            timelines.add(new Timeline(context, fetchedJson, name));
 
                         } catch (JSONException e) {
                             System.out.println(e);
