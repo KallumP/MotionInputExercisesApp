@@ -25,7 +25,7 @@ public class TriPointAngle implements Point {
     public TriPointAngle(JSONObject json) {
         try {
             toTrack = new ArrayList<>();
-            target = (int) json.get("angle");
+            target =  ((Double)json.get("angle")).intValue();
             leniency = Double.parseDouble(json.get("leniency").toString());
             JSONArray points = (JSONArray) json.get("toTrack");
 

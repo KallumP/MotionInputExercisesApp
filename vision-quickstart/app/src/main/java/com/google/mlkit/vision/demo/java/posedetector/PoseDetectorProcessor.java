@@ -19,14 +19,15 @@ package com.google.mlkit.vision.demo.java.posedetector;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
+
 import androidx.annotation.NonNull;
 
-import com.android.volley.RequestQueue;
-import com.android.volley.toolbox.StringRequest;
-import com.android.volley.toolbox.Volley;
+import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.odml.image.MlImage;
 
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.FirebaseDatabase;
 import com.google.mlkit.vision.common.InputImage;
 
 import com.google.mlkit.vision.demo.GraphicOverlay;
@@ -37,14 +38,14 @@ import com.google.mlkit.vision.pose.PoseDetection;
 import com.google.mlkit.vision.pose.PoseDetector;
 import com.google.mlkit.vision.pose.PoseDetectorOptionsBase;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 
-/**A processor to run pose detector. */
+//A processor to run pose detector.
 public class PoseDetectorProcessor extends VisionProcessorBase<PoseDetectorProcessor.PoseResult> {
     private static final String TAG = "PoseDetectorProcessor";
 
@@ -55,11 +56,10 @@ public class PoseDetectorProcessor extends VisionProcessorBase<PoseDetectorProce
     private final boolean rescaleZForVisualization;
     private final boolean isStreamMode;
     private final Context context;
-    private Timeline timeline = null;
 
-    /**
-     * Internal class to hold Pose and classification results.
-     */
+    public List<Timeline> timelines = null;
+
+    //Internal class to hold Pose and classification results.
     protected static class PoseResult {
         private final Pose pose;
 
@@ -90,17 +90,8 @@ public class PoseDetectorProcessor extends VisionProcessorBase<PoseDetectorProce
 
     void setupTimeline(Context context) {
 
-        SharedPreferences sp = context.getApplicationContext().getSharedPreferences("timelineData", Context.MODE_PRIVATE);
-        String url = sp.getString("timelineUrl", "null"); // default url is one of the sample timelines
-
-        RequestQueue rq = Volley.newRequestQueue(context.getApplicationContext());
-        StringRequest sr = Util.fetchJson(url, context, new Util.jsonHandler() {
-            @Override
-            void parse(JSONObject response) {
-                timeline = new Timeline(context, response);
-            }
-        });
-        rq.add(sr);
+        timelines = new ArrayList<>();
+        FetchTimelines();
     }
 
     @Override
@@ -128,10 +119,21 @@ public class PoseDetectorProcessor extends VisionProcessorBase<PoseDetectorProce
     @Override
     protected void onSuccess(@NonNull PoseResult poseResult, @NonNull GraphicOverlay graphicOverlay) {
 
+        //json was not initialised
+        if (timelines == null)
+            return;
+
+        //no timelines found
+        if (timelines.size() == 0)
+            return;
+
+
         List<String> info = new ArrayList<>();
-        if (timeline != null && timeline.exerciseUnavailable == 0) {
-            timeline.validatePose(poseResult.pose.getAllPoseLandmarks());
-            info = timeline.getLandMarkInfo();
+
+        //if the timeline exists, and there were exercises
+        if (timelines.get(0) != null && timelines.get(0).exerciseUnavailable == 0) {
+            timelines.get(0).validatePose(poseResult.pose.getAllPoseLandmarks());
+            info = timelines.get(0).getLandMarkInfo();
         }
 
         graphicOverlay.add(new PoseGraphic(graphicOverlay, poseResult.pose, showInFrameLikelihood, visualizeZ, rescaleZForVisualization, info));
@@ -146,5 +148,46 @@ public class PoseDetectorProcessor extends VisionProcessorBase<PoseDetectorProce
     protected boolean isMlImageEnabled(Context context) {
         // Use MlImage in Pose Detection by default, change it to OFF to switch to InputImage.
         return true;
+    }
+
+    void FetchTimelines() {
+
+        //instance of the database
+        FirebaseDatabase database = FirebaseDatabase.getInstance();
+
+        //tries to pull the timelines section of the database
+        database.getReference("Timelines").get().addOnCompleteListener(new OnCompleteListener<DataSnapshot>() {
+
+            @Override
+            public void onComplete(@NonNull Task<DataSnapshot> task) {
+
+                //couldn't get values
+                if (!task.isSuccessful())
+                    Log.e("firebase", "Error getting data", task.getException());
+
+                else {
+
+                    // Get the value of each child object
+                    for (DataSnapshot childSnapshot : task.getResult().getChildren()) {
+
+                        if (childSnapshot.getKey() == "1")
+                            return;
+
+                        //gets the json of current timeline
+                        String value = childSnapshot.getValue().toString();
+
+                        try {
+
+                            //adds this timeline to the list
+                            JSONObject fetchedJson = new JSONObject(value);
+                            timelines.add(new Timeline(context, fetchedJson));
+
+                        } catch (JSONException e) {
+                            System.out.println(e);
+                        }
+                    }
+                }
+            }
+        });
     }
 }
