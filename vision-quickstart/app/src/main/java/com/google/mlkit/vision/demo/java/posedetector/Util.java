@@ -2,12 +2,12 @@ package com.google.mlkit.vision.demo.java.posedetector;
 
 import android.content.Context;
 
-import com.android.volley.Request;
-import com.android.volley.RequestQueue;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.StringRequest;
-import com.android.volley.toolbox.Volley;
+import androidx.annotation.NonNull;
+
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.FirebaseDatabase;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -25,23 +25,28 @@ public class Util {
     public static Integer screenWidth = null;
 
     public static abstract class jsonHandler {
-        abstract void parse(JSONObject response);
+        abstract void parse(String name, JSONObject response);
     }
 
-    public static StringRequest fetchJson(String url, Context context, jsonHandler handler) {
-        return new StringRequest(Request.Method.GET, url, new Response.Listener<String>() {
+    public static void fetchJson(String path, jsonHandler handler) {
+        FirebaseDatabase database = FirebaseDatabase.getInstance();
+        database.getReference(path).get().addOnCompleteListener(new OnCompleteListener<DataSnapshot>() {
             @Override
-            public void onResponse(String response) {
-                try {
-                    JSONObject json = new JSONObject(response);
-                    handler.parse(json);
-                } catch (JSONException e) {System.out.println(e);}
+            public void onComplete(@NonNull Task<DataSnapshot> task) {
+                if (!task.isSuccessful()) {
+                    System.out.println("Could not fetch JSON");
+                } else {
+                    String name = task.getResult().getKey();
+                    String value = task.getResult().getValue().toString();
+                    try {
+                        JSONObject obj = new JSONObject(value);
+                        handler.parse(name, obj);
+                    } catch (JSONException e) {
+                        System.out.println(e);
+                    }
+                }
             }
-        }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError e) {System.out.println(e);}
-        }
-        );
+        });
     }
 
     //returns exact pixel values of the screen from a ratio vector array

@@ -19,6 +19,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 // An object that encapsulates a series of exercises
@@ -27,25 +28,27 @@ public class Timeline {
     public List<Exercise> exercises = null;
     public int currentIndex = 0;
     public int timelineRepeat = 0;
-    String name = "";
+    private int exerciseUnavailable;
+    // Indicates whether we can validate landmarks against this timeline
+    public boolean ready = false;
+    String name;
 
     public Timeline(Context context, JSONObject timelineJson, String _name) {
-
         name = _name;
-        exercises = new ArrayList<>();
 
         // Read each exercise stored in the json
         try {
-
             //gets all the exercise jsons from the timeline
             JSONArray allExerciseJson = (JSONArray) timelineJson.get("timeline");
+            exerciseUnavailable = allExerciseJson.length();
+            exercises = new ArrayList<>(Collections.nCopies(exerciseUnavailable, null));
 
             //loops through all the exercise jsons
-            for (int i = 0; i < allExerciseJson.length(); i++)
-
+            for (int i = 0; i < allExerciseJson.length(); i++) {
                 //adds this exercise to the list
-                FetchExercise(((JSONObject) allExerciseJson.get(i)).get("exercise").toString());
-
+                String name = ((JSONObject) allExerciseJson.get(i)).get("exercise").toString();
+                fetchExercise(name, i);
+            }
             currentIndex = 0;
         } catch (JSONException e) {
             System.out.println(e);
@@ -68,7 +71,7 @@ public class Timeline {
 
                 // resets all exercises
                 for (int i = 0; i < currentIndex; i++)
-                    exercises.get(i).resetPoseTracker();
+                    exercises.get(i).resetExercise();
 
                 //resets the timeline
                 currentIndex = 0;
@@ -94,45 +97,22 @@ public class Timeline {
         info.add("Current exercise: " + exercises.get(currentIndex).name);
 
         //gets the exercise's info
-        info.addAll(exercises.get(currentIndex).getPoseInfo());
+        info.addAll(exercises.get(currentIndex).getExerciseInfo());
 
         return info;
     }
 
-    void FetchExercise(String exerciseName) {
-
-        //removes the ".json" from the exercise name if there was one
-        String nameWithoutExtension = exerciseName.replace(".json", "");
-        String exercisePath = "Exercises/" + nameWithoutExtension;
-
-        //instance of the database
-        FirebaseDatabase database = FirebaseDatabase.getInstance();
-
-        //tries to pull this exercise's json
-        database.getReference(exercisePath).get().addOnCompleteListener(new OnCompleteListener<DataSnapshot>() {
-
+    void fetchExercise(String exerciseName, final int index) {
+        if (exerciseName.contains(".json"))
+            exerciseName = exerciseName.substring(0, exerciseName.length() - 5);
+        String path = "Exercises/" + exerciseName;
+        Util.fetchJson(path, new Util.jsonHandler() {
             @Override
-            public void onComplete(@NonNull Task<DataSnapshot> task) {
-
-                //couldn't get values
-                if (!task.isSuccessful())
-                    Log.e("firebase", "Error getting data", task.getException());
-
-                else {
-
-                    //gets the json of this exercise
-                    String value = task.getResult().getValue().toString();
-
-                    try {
-
-                        //adds this exercise to the list
-                        JSONObject fetchedJson = new JSONObject(value);
-                        exercises.add(new Exercise(fetchedJson, nameWithoutExtension));
-
-                    } catch (JSONException e) {
-                        System.out.println(e);
-                    }
-                }
+            void parse(String name, JSONObject response) {
+                exercises.set(index, new Exercise(response, name));
+                exerciseUnavailable -= 1;
+                if (exerciseUnavailable == 0)
+                    ready = true;
             }
         });
     }

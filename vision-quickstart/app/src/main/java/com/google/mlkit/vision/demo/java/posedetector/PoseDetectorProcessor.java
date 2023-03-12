@@ -22,12 +22,9 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
-import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.odml.image.MlImage;
 
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.FirebaseDatabase;
 import com.google.mlkit.vision.common.InputImage;
 
 import com.google.mlkit.vision.demo.GraphicOverlay;
@@ -37,8 +34,8 @@ import com.google.mlkit.vision.pose.Pose;
 import com.google.mlkit.vision.pose.PoseDetection;
 import com.google.mlkit.vision.pose.PoseDetector;
 import com.google.mlkit.vision.pose.PoseDetectorOptionsBase;
+import com.google.mlkit.vision.pose.PoseLandmark;
 
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
@@ -57,7 +54,8 @@ public class PoseDetectorProcessor extends VisionProcessorBase<PoseDetectorProce
     private final boolean isStreamMode;
     private final Context context;
 
-    public List<Timeline> timelines = null;
+    // TODO: A processor should only include one timeline
+    public Timeline timeline = null;
 
     //Internal class to hold Pose and classification results.
     protected static class PoseResult {
@@ -83,15 +81,21 @@ public class PoseDetectorProcessor extends VisionProcessorBase<PoseDetectorProce
         // we could pass the context object here into the Timeline class
         this.context = context;
         SharedPreferences sp = context.getApplicationContext().getSharedPreferences("timelineData", Context.MODE_PRIVATE);
-        sp.edit().putString("timelineUrl", "https://api.npoint.io/f9d2459d13562c7a5542").apply();
+        sp.edit().putString("timelinePath", "Timelines/mondayDemoTest").apply();
 
         setupTimeline(context);
     }
 
     void setupTimeline(Context context) {
-
-        timelines = new ArrayList<>();
-        FetchTimelines();
+        // read the name of the timeline to be fetched from SharedPreferences
+        String path = context.getSharedPreferences("timelineData", Context.MODE_PRIVATE).getString("timelinePath", "");
+        Util.fetchJson(path, new Util.jsonHandler() {
+            @Override
+            void parse(String name, JSONObject response) {
+                System.out.println("Fetched");
+                timeline = new Timeline(context, response, name);
+            }
+        });
     }
 
     @Override
@@ -118,26 +122,13 @@ public class PoseDetectorProcessor extends VisionProcessorBase<PoseDetectorProce
 
     @Override
     protected void onSuccess(@NonNull PoseResult poseResult, @NonNull GraphicOverlay graphicOverlay) {
-
-        //json was not initialised
-        if (timelines == null)
-            return;
-
-        //no timelines found
-        if (timelines.size() == 0)
-            return;
-
-
         List<String> info = new ArrayList<>();
 
-        info.add("Timelines found: " + timelines.size());
-
-        int timelineToCheck = 1;
+        List<PoseLandmark> landmarks = poseResult.pose.getAllPoseLandmarks();
         //if the timeline exists, and there were exercises
-        if (timelines.get(timelineToCheck) != null) {
-            info.add("condition passed");
-            timelines.get(timelineToCheck).validatePose(poseResult.pose.getAllPoseLandmarks());
-            info = timelines.get(timelineToCheck).getLandMarkInfo();
+        if (timeline != null && timeline.ready && landmarks.size() > 0) {
+            timeline.validatePose(landmarks);
+            info = timeline.getLandMarkInfo();
         }
 
         graphicOverlay.add(new PoseGraphic(graphicOverlay, poseResult.pose, showInFrameLikelihood, visualizeZ, rescaleZForVisualization, info));
@@ -152,47 +143,5 @@ public class PoseDetectorProcessor extends VisionProcessorBase<PoseDetectorProce
     protected boolean isMlImageEnabled(Context context) {
         // Use MlImage in Pose Detection by default, change it to OFF to switch to InputImage.
         return true;
-    }
-
-    void FetchTimelines() {
-
-        //instance of the database
-        FirebaseDatabase database = FirebaseDatabase.getInstance();
-
-        //tries to pull the timelines section of the database
-        database.getReference("Timelines").get().addOnCompleteListener(new OnCompleteListener<DataSnapshot>() {
-
-            @Override
-            public void onComplete(@NonNull Task<DataSnapshot> task) {
-
-                //couldn't get values
-                if (!task.isSuccessful())
-                    Log.e("firebase", "Error getting data", task.getException());
-
-                else {
-
-                    // Get the value of each child object
-                    for (DataSnapshot childSnapshot : task.getResult().getChildren()) {
-
-                        if (childSnapshot.getKey() == "1")
-                            return;
-
-                        //gets the json of current timeline
-                        String value = childSnapshot.getValue().toString();
-                        String name = childSnapshot.getKey().toString();
-
-                        try {
-
-                            //adds this timeline to the list
-                            JSONObject fetchedJson = new JSONObject(value);
-                            timelines.add(new Timeline(context, fetchedJson, name));
-
-                        } catch (JSONException e) {
-                            System.out.println(e);
-                        }
-                    }
-                }
-            }
-        });
     }
 }
