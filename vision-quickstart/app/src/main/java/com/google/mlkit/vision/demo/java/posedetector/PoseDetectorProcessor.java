@@ -81,7 +81,8 @@ public class PoseDetectorProcessor extends VisionProcessorBase<PoseDetectorProce
         // we could pass the context object here into the Timeline class
         this.context = context;
         SharedPreferences sp = context.getApplicationContext().getSharedPreferences("timelineData", Context.MODE_PRIVATE);
-        sp.edit().putString("timelinePath", "Timelines/mondayDemoTest").apply();
+        sp.edit().putString("timelinePath", "Timelines/DemoTimeline").apply();
+//        sp.edit().putString("timelinePath", "Timelines/mondayDemoTest").apply();
 
         setupTimeline(context);
     }

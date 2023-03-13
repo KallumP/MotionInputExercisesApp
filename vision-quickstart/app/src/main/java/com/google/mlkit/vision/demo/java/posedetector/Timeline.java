@@ -86,12 +86,14 @@ public class Timeline {
         List<String> info = new ArrayList<>();
 
         //states how many times the timeline has been completed
-        info.add("Timeline: " + name + " finished " + timelineRepeat + " times");
+        info.add("Timeline: " + name);
 
         if (exercises.size() == 0){
-            info.add("No exercises");
+            info.add("No exercises. Try to reload...");
             return info;
         }
+
+        info.add("Repetitions: " + timelineRepeat);
 
         //states the current exercise name
         info.add("Current exercise: " + exercises.get(currentIndex).name);
