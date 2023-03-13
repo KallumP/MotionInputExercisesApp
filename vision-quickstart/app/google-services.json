@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "385713754993",
+    "firebase_url": "https://motion-9821b-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "motion-9821b",
+    "storage_bucket": "motion-9821b.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:385713754993:android:eac3c217bb338955205cd0",
+        "android_client_info": {
+          "package_name": "com.google.mlkit.vision.demo"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "385713754993-jumbqa3cul1akn7v5brtggrhhlqlbe84.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBe89cwxCD98SQuaaPGj7XWsITJLqZtjbQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "385713754993-jumbqa3cul1akn7v5brtggrhhlqlbe84.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

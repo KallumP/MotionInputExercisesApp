@@ -12,7 +12,7 @@ import java.util.List;
 public class TriPointAngle implements Point {
 
     private List<Integer> toTrack;
-    private int target;
+    private double target;
     private double actual;
     private double leniency;
 
@@ -25,7 +25,7 @@ public class TriPointAngle implements Point {
     public TriPointAngle(JSONObject json) {
         try {
             toTrack = new ArrayList<>();
-            target = (int) json.get("angle");
+            target =  Double.parseDouble(json.get("angle").toString());
             leniency = Double.parseDouble(json.get("leniency").toString());
             JSONArray points = (JSONArray) json.get("toTrack");
 

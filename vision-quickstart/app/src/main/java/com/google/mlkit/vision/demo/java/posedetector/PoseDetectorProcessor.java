@@ -19,11 +19,9 @@ package com.google.mlkit.vision.demo.java.posedetector;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
+
 import androidx.annotation.NonNull;
 
-import com.android.volley.RequestQueue;
-import com.android.volley.toolbox.StringRequest;
-import com.android.volley.toolbox.Volley;
 import com.google.android.gms.tasks.Task;
 import com.google.android.odml.image.MlImage;
 
@@ -36,15 +34,15 @@ import com.google.mlkit.vision.pose.Pose;
 import com.google.mlkit.vision.pose.PoseDetection;
 import com.google.mlkit.vision.pose.PoseDetector;
 import com.google.mlkit.vision.pose.PoseDetectorOptionsBase;
+import com.google.mlkit.vision.pose.PoseLandmark;
 
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 
-/**A processor to run pose detector. */
+//A processor to run pose detector.
 public class PoseDetectorProcessor extends VisionProcessorBase<PoseDetectorProcessor.PoseResult> {
     private static final String TAG = "PoseDetectorProcessor";
 
@@ -55,11 +53,11 @@ public class PoseDetectorProcessor extends VisionProcessorBase<PoseDetectorProce
     private final boolean rescaleZForVisualization;
     private final boolean isStreamMode;
     private final Context context;
-    private Timeline timeline = null;
 
-    /**
-     * Internal class to hold Pose and classification results.
-     */
+    // TODO: A processor should only include one timeline
+    public Timeline timeline = null;
+
+    //Internal class to hold Pose and classification results.
     protected static class PoseResult {
         private final Pose pose;
 
@@ -83,24 +81,22 @@ public class PoseDetectorProcessor extends VisionProcessorBase<PoseDetectorProce
         // we could pass the context object here into the Timeline class
         this.context = context;
         SharedPreferences sp = context.getApplicationContext().getSharedPreferences("timelineData", Context.MODE_PRIVATE);
-        sp.edit().putString("timelineUrl", "https://api.npoint.io/f9d2459d13562c7a5542").apply();
+        sp.edit().putString("timelinePath", "Timelines/DemoTimeline").apply();
+//        sp.edit().putString("timelinePath", "Timelines/mondayDemoTest").apply();
 
         setupTimeline(context);
     }
 
     void setupTimeline(Context context) {
-
-        SharedPreferences sp = context.getApplicationContext().getSharedPreferences("timelineData", Context.MODE_PRIVATE);
-        String url = sp.getString("timelineUrl", "null"); // default url is one of the sample timelines
-
-        RequestQueue rq = Volley.newRequestQueue(context.getApplicationContext());
-        StringRequest sr = Util.fetchJson(url, context, new Util.jsonHandler() {
+        // read the name of the timeline to be fetched from SharedPreferences
+        String path = context.getSharedPreferences("timelineData", Context.MODE_PRIVATE).getString("timelinePath", "");
+        Util.fetchJson(path, new Util.jsonHandler() {
             @Override
-            void parse(JSONObject response) {
-                timeline = new Timeline(context, response);
+            void parse(String name, JSONObject response) {
+                System.out.println("Fetched");
+                timeline = new Timeline(context, response, name);
             }
         });
-        rq.add(sr);
     }
 
     @Override
@@ -127,10 +123,12 @@ public class PoseDetectorProcessor extends VisionProcessorBase<PoseDetectorProce
 
     @Override
     protected void onSuccess(@NonNull PoseResult poseResult, @NonNull GraphicOverlay graphicOverlay) {
-
         List<String> info = new ArrayList<>();
-        if (timeline != null && timeline.exerciseUnavailable == 0) {
-            timeline.validatePose(poseResult.pose.getAllPoseLandmarks());
+
+        List<PoseLandmark> landmarks = poseResult.pose.getAllPoseLandmarks();
+        //if the timeline exists, and there were exercises
+        if (timeline != null && timeline.ready && landmarks.size() > 0) {
+            timeline.validatePose(landmarks);
             info = timeline.getLandMarkInfo();
         }
 

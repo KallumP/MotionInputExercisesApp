@@ -1,10 +1,18 @@
 package com.google.mlkit.vision.demo.java.posedetector;
 
 import android.content.Context;
-import com.android.volley.RequestQueue;
-import com.android.volley.toolbox.StringRequest;
+import android.util.Log;
+
+import androidx.annotation.NonNull;
+
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 import com.google.mlkit.vision.pose.PoseLandmark;
-import com.android.volley.toolbox.Volley;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -17,35 +25,29 @@ import java.util.List;
 // An object that encapsulates a series of exercises
 public class Timeline {
 
-    static JSONObject gestureJson;
     public List<Exercise> exercises = null;
     public int currentIndex = 0;
     public int timelineRepeat = 0;
+    private int exerciseUnavailable;
+    // Indicates whether we can validate landmarks against this timeline
+    public boolean ready = false;
+    String name;
 
-    public int exerciseUnavailable = 1;
+    public Timeline(Context context, JSONObject timelineJson, String _name) {
+        name = _name;
 
-    public Timeline(Context context, JSONObject timelineJson) {
         // Read each exercise stored in the json
         try {
+            //gets all the exercise jsons from the timeline
             JSONArray allExerciseJson = (JSONArray) timelineJson.get("timeline");
             exerciseUnavailable = allExerciseJson.length();
             exercises = new ArrayList<>(Collections.nCopies(exerciseUnavailable, null));
-            RequestQueue rq = Volley.newRequestQueue(context.getApplicationContext());
 
+            //loops through all the exercise jsons
             for (int i = 0; i < allExerciseJson.length(); i++) {
-                // Download every exercise's json file
-                JSONObject exerciseJson = (JSONObject) allExerciseJson.get(i);
-                String name = (String) exerciseJson.get("exercise");
-                String url = (String) exerciseJson.get("url");
-                final int index = i;
-                StringRequest sr = Util.fetchJson(url, context, new Util.jsonHandler() {
-                    @Override
-                    void parse(JSONObject response) {
-                        exercises.set(index, new Exercise(response, name));
-                        exerciseUnavailable -= 1;
-                    }
-                });
-                rq.add(sr);
+                //adds this exercise to the list
+                String name = ((JSONObject) allExerciseJson.get(i)).get("exercise").toString();
+                fetchExercise(name, i);
             }
             currentIndex = 0;
         } catch (JSONException e) {
@@ -55,6 +57,9 @@ public class Timeline {
 
     public void validatePose(List<PoseLandmark> landmarks) {
 
+        if (exercises.size() == 0)
+            return;
+
         //passes the validation down to the current exercise (and checks if the exercise finished
         if (exercises.get(currentIndex).validatePose(landmarks)) {
 
@@ -62,11 +67,12 @@ public class Timeline {
             currentIndex++;
 
             //if timeline has finished
-            if (currentIndex >= exercises.size()){
+            if (currentIndex >= exercises.size()) {
+
                 // resets all exercises
-                for (int i = 0; i < currentIndex; i++) {
-                    exercises.get(i).resetPoseTracker();
-                }
+                for (int i = 0; i < currentIndex; i++)
+                    exercises.get(i).resetExercise();
+
                 //resets the timeline
                 currentIndex = 0;
 
@@ -76,19 +82,40 @@ public class Timeline {
         }
     }
 
-    // TODO: Modify this function
     public List<String> getLandMarkInfo() {
         List<String> info = new ArrayList<>();
 
         //states how many times the timeline has been completed
-        info.add("Timeline finished " + timelineRepeat + " times");
+        info.add("Timeline: " + name);
+
+        if (exercises.size() == 0){
+            info.add("No exercises. Try to reload...");
+            return info;
+        }
+
+        info.add("Repetitions: " + timelineRepeat);
 
         //states the current exercise name
         info.add("Current exercise: " + exercises.get(currentIndex).name);
 
         //gets the exercise's info
-        info.addAll(exercises.get(currentIndex).getPoseInfo());
+        info.addAll(exercises.get(currentIndex).getExerciseInfo());
 
         return info;
+    }
+
+    void fetchExercise(String exerciseName, final int index) {
+        if (exerciseName.contains(".json"))
+            exerciseName = exerciseName.substring(0, exerciseName.length() - 5);
+        String path = "Exercises/" + exerciseName;
+        Util.fetchJson(path, new Util.jsonHandler() {
+            @Override
+            void parse(String name, JSONObject response) {
+                exercises.set(index, new Exercise(response, name));
+                exerciseUnavailable -= 1;
+                if (exerciseUnavailable == 0)
+                    ready = true;
+            }
+        });
     }
 }
